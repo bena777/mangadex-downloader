@@ -127,12 +127,26 @@ def generate_Comicinfo(manga, total_pages, chapter=None, volume=None):
 class CBZFile:
     file_ext = ".cbz"
 
-    def convert(self, zip_obj, images):
+    def convert(self, zip_obj, images, chapter=None):
         pbm.set_convert_total(len(images))
         progress_bar = pbm.get_convert_pb(recreate=not pbm.stacked)
 
-        for im_path in images:
-            zip_obj.write(im_path, im_path.name)
+        lang = None
+        if chapter is not None:
+            lang = chapter.language.value
+        elif hasattr(self, "manga") and hasattr(self.manga, "chapters"):
+            try:
+                lang = self.manga.chapters.language.value
+            except Exception:
+                lang = "unknown"
+
+        for im_path in images: # adds language as a subfolder inside .cbz change
+            if lang:
+                arcname = f"{lang}/{im_path.name}"
+            else:
+                arcname = im_path.name
+
+            zip_obj.write(im_path, arcname)
             progress_bar.update(1)
 
         zip_obj.close()
@@ -217,12 +231,20 @@ class ComicBookArchive(ConvertedChaptersFormat, CBZFile):
         )
 
     def on_finish(self, file_path, chapter, images):
-        self.worker.submit(lambda: self.convert(self.chapter_zip, images))
+        self.worker.submit(lambda: self.convert(self.chapter_zip, images, chapter=chapter))
 
 
 class ComicBookArchiveVolume(ConvertedVolumesFormat, CBZFile):
     def on_prepare(self, file_path, volume, count):
         volume_name = self.get_volume_name(volume)
+        try: # detects volumes language and appends to filename (if it exists) change
+            first_chapter = volume[0]  # assumes volume is iterable
+            lang = first_chapter.language.value
+        except Exception:
+            lang = "unknown"
+        file_path = file_path.with_name(f"{file_path.stem}_{lang}{file_path.suffix}")
+
+
         self.volume_zip = self.make_zip(file_path)
         self.volume_path = create_directory(volume_name, self.path)
         self.total_pages = 0
