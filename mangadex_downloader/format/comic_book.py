@@ -127,7 +127,7 @@ def generate_Comicinfo(manga, total_pages, chapter=None, volume=None):
 class CBZFile:
     file_ext = ".cbz"
 
-    def convert(self, zip_obj, images, chapter=None):
+    def convert(self, zip_obj, images, chapter=None): # changed, addes lang parameter and turns it into a subfolder if it exists
         pbm.set_convert_total(len(images))
         progress_bar = pbm.get_convert_pb(recreate=not pbm.stacked)
 
@@ -230,14 +230,14 @@ class ComicBookArchive(ConvertedChaptersFormat, CBZFile):
             volume=chapter.volume,
         )
 
-    def on_finish(self, file_path, chapter, images):
+    def on_finish(self, file_path, chapter, images): # changed, added so it passes in chapter as parameter
         self.worker.submit(lambda: self.convert(self.chapter_zip, images, chapter=chapter))
 
 
 class ComicBookArchiveVolume(ConvertedVolumesFormat, CBZFile):
     def on_prepare(self, file_path, volume, count):
         volume_name = self.get_volume_name(volume)
-        try: # detects volumes language and appends to filename (if it exists) change
+        try: # changed, detects volumes language and appends to filename (if it exists)
             first_chapter = volume[0]  # assumes volume is iterable
             lang = first_chapter.language.value
         except Exception:
